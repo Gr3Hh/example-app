@@ -1,0 +1,70 @@
+version: 2.1
+orbs:
+  gcp-gcr: circleci/gcp-gcr@0.15.3
+
+jobs:
+  test-and-lint:
+    machine:
+      image: ubuntu-2004:202010-01
+    resource_class: medium
+    steps:
+      - checkout
+      - run:
+          name: "Lint"
+          command: |
+            docker-compose run --rm --no-deps app sh -c "flake8 ."
+      - run:
+          name: "Safety check"
+          command: |
+            docker-compose run --rm --no-deps app sh -c "safety check"
+      - run:
+          name: "Licenses check"
+          command: |
+            docker-compose run --rm --no-deps app sh -c \
+              "pip-licenses --with-system --ignore-packages psycopg2-binary psycopg2 | grep -e 'GPL' | xargs -r ls"
+      - run:
+          name: "Security check"
+          command: |
+            docker-compose run --rm --no-deps app sh -c "bandit -r -c pyproject.toml ."
+      - run:
+          name: "Run tests"
+          command: |
+            docker-compose up -d --build
+            docker-compose exec app bash -c "pytest ."
+
+  build-and-push:
+    docker:
+      image: cimg/base:2023.04
+    resource_class: medium
+    steps:
+      - checkout
+      - setup_remote_docker:
+          version: 20.10.18
+      - gcp-gcr/gcr-auth
+      - gcp-gcr/build-image:
+          image: ${CIRCLE_PROJECT_REPONAME}
+          tag: $(echo $CIRCLE_BRANCH | sed 's/\//-/')-${CIRCLE_SHA1:0:7}-${CIRCLE_BUILD_NUM}
+          registry-url: gcr.io
+          extra_build_args: "--no-cache"
+      - gcp-gcr/build-and-push-image:
+          image: ${CIRCLE_PROJECT_REPONAME}
+          registry-url: gcr.io
+          tag: $(echo $CIRCLE_BRANCH | sed 's/\//-/')-${CIRCLE_SHA1:0:7}-${CIRCLE_BUILD_NUM}
+      - gcp-gcr/tag-image:
+          google-project-id: GOOGLE_PROJECT_ID
+          image: ${CIRCLE_PROJECT_REPONAME}
+          registry-url: gcr.io
+          source-tag: $(echo $CIRCLE_BRANCH | sed 's/\//-/')-${CIRCLE_SHA1:0:7}-${CIRCLE_BUILD_NUM}
+          target-tag: latest
+
+workflows:
+  main-workflow:
+    jobs:
+      - test-and-lint
+      - build-and-push:
+          requires:
+            - test-and-lint
+          filters:
+            branches:
+              only:
+                - master

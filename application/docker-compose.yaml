@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  app:
+    container_name: app
+    image: app
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - build_env="testing"
+    env_file:
+      - .env.ci
+    command: uvicorn main:app --port 8000 --host 0.0.0.0
+    depends_on:
+      db:
+        condition: service_started
+      migration:
+        condition: service_started
+
+    ports:
+      - '8000:8000'
+
+  db:
+    image: postgres:13.4
+    volumes:
+      - db_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+
+  migration:
+    image: app
+    command: alembic upgrade head
+    depends_on:
+      db:
+        condition: service_started
+    env_file:
+      - .env.ci
+
+volumes:
+  db_data:

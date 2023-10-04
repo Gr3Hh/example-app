@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    {{- include "app.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.application.app.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "app.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 2
+      maxUnavailable: 1
+
+  template:
+    metadata:
+      labels:
+          {{- include "app.selectorLabels" . | nindent 8 }}
+    spec:
+
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  {{- include "app.selectorLabels" . | nindent 18 }}
+              topologyKey: kubernetes.io/hostname
+
+      containers:
+      - name: {{ .Chart.Name }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        args: ["uvicorn", "main:app", "--port", "80", "--host", "0.0.0.0"]
+        resources:
+          requests:
+            memory: {{ .Values.application.app.request.mem }} 
+            cpu: {{ .Values.application.app.request.cpu }} 
+          limits: 
+            memory: {{ .Values.application.app.limits.mem }} 
+            cpu: {{ .Values.application.app.limits.cpu }} 
+        
+        ports:
+          - containerPort: 80
+            name: http
+
+        {{- with .Values.application.app.probes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+
+        {{- include "app.env" . | indent 8 }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ .Release.Name }}-pdb
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      {{- include "app.selectorLabels" . | nindent 6 }}

@@ -1,0 +1,31 @@
+[tool.poetry]
+name = "app"
+version = "0.1.0"
+description = "Test app"
+authors = ["anoskov"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+sqlalchemy = "^2.0.21"
+alembic = "^1.12.0"
+uvicorn = "^0.23.2"
+fastapi = "^0.103.2"
+pydantic = "^2.4.2"
+pydantic-settings = "^2.0.3"
+httpx = "^0.25.0"
+psycopg2-binary = "^2.9.8"
+
+[tool.poetry.group.dev.dependencies]
+flake8 = "^6.1.0"
+pip-licenses = "^4.3.3"
+bandit = "^1.7.5"
+pytest = "^7.4.2"
+safety = "^2.3.5"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.bandit]
+skips = ["B101"]

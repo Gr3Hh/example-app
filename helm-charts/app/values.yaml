@@ -1,0 +1,40 @@
+application:
+
+  app:
+    replicaCount: 3
+    request:
+      memory: "100Mi"
+      cpu: "100m"
+    limits:
+      memory: "300Mi"
+      cpu: "300m"
+
+    probes:
+      readinessProbe:
+        initialDelaySeconds: 10
+        periodSeconds: 5
+        tcpSocket:
+          port: http
+      livenessProbe:
+        failureThreshold: 2
+        tcpSocket:
+          port: http
+        initialDelaySeconds: 30
+        periodSeconds: 5
+        successThreshold: 1
+        timeoutSeconds: 5
+
+  upgrade_db:
+    annotation:
+      argocd.argoproj.io/hook: PreSync
+      argocd.argoproj.io/sync-wave: "1"
+      argocd.argoproj.io/hook-delete-policy: HookSucceeded
+
+image:
+  repository: gcr.io/project/app
+  tag: latest
+
+postgres:
+  host: postgresql
+  db: postgres
+  user: postgres

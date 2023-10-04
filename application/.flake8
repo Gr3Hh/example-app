@@ -1,0 +1,6 @@
+[flake8]
+max_line_length = 120
+ignore = W503,C814,T000,VNE001,E231,D104,D100,B301,E203,B010,B009,B008,A003,VNE003
+inline-quotes = double
+docstring-convention = google
+exclude = migrations,alembic.ini
